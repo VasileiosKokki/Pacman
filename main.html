@@ -100,7 +100,7 @@
     </div>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script>
-        const svgContainer = document.getElementById('svg-container');
+        const svgContainer = document.getElementById('svgContainer');
         // let nodes = [];
         let nodesByLevel = [];
         let steps = [];
@@ -393,13 +393,12 @@
             parent = steps[steps.length - 1];
             if (parent != undefined){
                 id = parent.id.toString() + currentCellId.toString();
-                grandparent = parent.parent;
             } else {
                 id = currentCellId.toString()
-                grandparent = undefined;
             }
-            steps.push({depth, currentCellId, parent, grandparent, id, direction, score});
+            steps.push({depth, currentCellId, parent, id, direction, score});
             addUnique(depth, currentCellId, direction);
+            visualizeLogic(depth, currentCellId, direction);
             // console.log(steps);
             
 
@@ -420,6 +419,7 @@
             }
 
             steps.push(parentStep);
+            visualizeLogic(parentStep.depth, parentStep.currentCellId, parentStep.direction);
             // console.log(steps);
 
 
@@ -438,7 +438,7 @@
                 id = currentCellId.toString()
             }
             candidate = {depth, currentCellId, parent, id, direction, score};
-            console.log(candidate);
+            // console.log(candidate);
 
             isUnique = true;
 
@@ -448,27 +448,13 @@
                 }
             });
 
+            
 
             if (isUnique) {
                 unique.push(candidate);
-                console.log(unique);
-
-                const maxDepth = findMaxDepth();
-                const svgContainer = document.getElementById('svgContainer');
-                svgContainer.innerHTML = ''; // Clear the SVG container
-                for (i = 0; i <= maxDepth; i++){
-                    visualizeNodes(i);
-                }
-                // textElements.forEach(text => svgContainer.appendChild(text));
-                triangleElements.forEach(triangle => document.getElementById('svgContainer').appendChild(triangle));
-                triangleElements = [];
-                rectElements.forEach(rect => document.getElementById('svgContainer').appendChild(rect));
-                rectElements = [];
-                textElements.forEach(text => document.getElementById('svgContainer').appendChild(text));
-                textElements = [];
-                
-                
+                console.log(unique);           
             }
+
             
             
             
@@ -542,7 +528,7 @@
             // --------------------------------------------------------
             
 
-            
+            const lastStep = steps[steps.length-1];
 
             // Iterate over nodes and visualize them
             nodes.forEach((node, index) => {
@@ -563,9 +549,13 @@
                 triangle.setAttribute('fill', color);
                 triangle.setAttribute('stroke', 'white');
                 triangle.setAttribute('stroke-width', '2');
+                if (lastStep.id == node.id) {
+                    triangle.setAttribute('stroke', 'yellow');
+                    triangle.setAttribute('stroke-width', '7');
+                }
                 triangleElements.push(triangle);
-                // console.log(node);
 
+                // console.log(node);
 
 
                 if (level != 0){
@@ -621,7 +611,11 @@
                     // Append the rectangle to the SVG container before the text element
                     rectElements.push(rect);
                 }
+                
             });
+
+            
+
 
             
 
@@ -638,6 +632,53 @@
             });
             return maxDepth;
         }
+
+
+        let c=1;
+
+        function resizeContainer(){
+            const maxDepth = findMaxDepth();
+            const svgContainer = document.getElementById('svgContainer');
+            let maxHorizontal = 0;
+            for (i = 0; i <= maxDepth; i++){
+                if (maxHorizontal < nodesByLevel[i].length) {
+                    maxHorizontal = nodesByLevel[i].length
+                }
+            }
+            let multiplier = maxHorizontal - 18;
+            if (multiplier > 0){
+                const newWidth = 1500 + 80 * multiplier;
+                svgContainer.setAttribute('width', newWidth);
+                // console.log(maxHorizontal);
+            }
+            let multiplier2 = maxDepth - 6;
+            // console.log(multiplier2);
+            if (multiplier2 > 0){
+                const newHeight = 800 + 100 * multiplier2;
+                svgContainer.setAttribute('height', newHeight);
+            }     
+        }
+
+
+        function visualizeLogic() {
+            const maxDepth = findMaxDepth();
+            const svgContainer = document.getElementById('svgContainer');
+            svgContainer.innerHTML = ''; // Clear the SVG container
+            for (i = 0; i <= maxDepth; i++){
+                visualizeNodes(i);
+            }
+            // textElements.forEach(text => svgContainer.appendChild(text));
+            triangleElements.forEach(triangle => document.getElementById('svgContainer').appendChild(triangle));
+            triangleElements = [];
+            rectElements.forEach(rect => document.getElementById('svgContainer').appendChild(rect));
+            rectElements = [];
+            textElements.forEach(text => document.getElementById('svgContainer').appendChild(text));
+            textElements = [];
+
+            resizeContainer();
+        }
+
+
 
 
 
