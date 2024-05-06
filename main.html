@@ -9,8 +9,15 @@
             transform: scale(0.8); /* Adjust the scale factor as needed */
             transform-origin: 0 0; /* Set the transformation origin to the top-left corner */
             background-color: #141414;
+            height: 136%;
+            width: 180%;
+        }
+        body {
+            margin: 0;
+            padding: 0;
         }
         .grid {
+            margin: 5px;
             display: grid;
             grid-template-columns: repeat(3, 100px);
             grid-template-rows: repeat(3, 100px);
@@ -34,27 +41,29 @@
             outline: 8px solid green; /* Outline style */
         }
         .text {
+            margin: 5px;
             font-size: 30px;
             max-width: 300px;
             color: white;
         }   
         #depth, #score, #undoButton {
+            margin: 5px;
             font-size: 30px;
         }
         #informationTree {
+            margin: 5px;
             font-family: Arial, sans-serif;
             font-size: 14px;
             max-width: 300px;
             color: white;
         }
         #searchTree {
-            display: flex;
-            justify-content: flex-start;
-            align-items: flex-start;
-            max-width: 300px;
+            transition: transform 0.3s ease;
+            background-color: #141414;
+            position: absolute;
+            border: 1px solid rgb(104, 104, 104);
         }
         #svgContainer {
-            overflow: visible;
             position: absolute;
             top: 0;
             left: 350px;
@@ -75,30 +84,31 @@
     <div id="searchTree">
         <div class="grid">
             <div class="cell" id="cell-1">
-                <img src="pacman.png" alt="Pacman" style="width: 50px; height: 50px;" class="outline">
+                <img src="./images/pacman.png" alt="Pacman" style="width: 50px; height: 50px;" class="outline">
             </div>
             <div class="cell" id="cell-2"></div>
             <div class="cell" id="cell-3"></div>
             <div class="cell" id="cell-4"></div>
             <div class="cell" id="cell-5">
-                <img src="wall.png" alt="Moving wall" style="width: 50px; height: 50px;">
+                <img src="./images/wall.png" alt="Moving wall" style="width: 50px; height: 50px;">
             </div>
             <div class="cell" id="cell-6"></div>
             <div class="cell" id="cell-7"></div>
             <div class="cell" id="cell-8"></div>
             <div class="cell" id="cell-9"><span class="bullet">&#8226;</span></div>
         </div>
-        <svg id="svgContainer" width="1500" height="800">
-            <!-- Nodes will be drawn here -->
-        </svg>
+        <div class="text">Depth: <span id="depth">0</span></div>
+        <div class="text">Score: <span id="score">0</span></div>
+        <button id="undoButton">Undo</button>
+        <div id="informationTree">
+            <!-- information tree content will be dynamically generated here -->
+        </div>
     </div>
-    <div class="text">Depth: <span id="depth">0</span></div>
-    <div class="text">Score: <span id="score">0</span></div>
-    <button id="undoButton">Undo</button>
-    <div id="informationTree">
-        <!-- information tree content will be dynamically generated here -->
-    </div>
+    <svg id="svgContainer" width="1490" height="800">
+        <!-- Nodes will be drawn here -->
+    </svg>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         const svgContainer = document.getElementById('svgContainer');
         // let nodes = [];
@@ -116,13 +126,28 @@
         let score = 0;
         const movement = 1;
         const undo = -1;
-        let undoTimes = 0;
         pacmanPositions[pacmanIndex] = 1;
         wallPositions[wallIndex] = 5;
+
+
+        // Example: Translate an element vertically using jQuery
+        $(document).ready(function() {
+            $(window).on('scroll', function() {
+                // Get the vertical scroll position
+                var wScrollY = ($(this).scrollTop()*window.devicePixelRatio);
+                var wScrollX = ($(this).scrollLeft() * window.devicePixelRatio);
+                
+                // Translate the element vertically
+                $('#searchTree').css({'transform': 'translateY(' + wScrollY + 'px) translateX(' + wScrollX + 'px)','z-index': '9999'});
+            });
+        });
+
         
+
         generateInformationTreeHTML(pacmanPositions[pacmanIndex]);
         addSteps(depth, pacmanPositions[pacmanIndex]);
         
+
 
 
         const bullets = document.querySelectorAll('.bullet');
@@ -228,6 +253,10 @@
 
         // Event listener to handle keyboard inputs
         document.addEventListener('keydown', event => {
+            if (event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                // Prevent the default behavior (page scrolling)
+                event.preventDefault();
+            }
             const key = event.key;
             const keyCode = event.keyCode || event.which;
             let direction;
@@ -238,17 +267,19 @@
                     // Move Pacman sprite to the cell above
                     newCellId = pacmanPositions[pacmanIndex] - 3;
                     if (pacmanPositions[ pacmanIndex] > 3 && !isWall(newCellId)) {
-                        direction = "up";
-                        movePacman('cell-' + (newCellId),movement,direction);  
-                        undoTimes=0;                   
+                        if (score <= 0){
+                            direction = "up";
+                            movePacman('cell-' + (newCellId),movement,direction);    
+                        }               
                     }
                 } else {
                     newCellId = wallPositions[wallIndex] - 3;
                     // console.log(isDot(newCellId));
                     if (wallPositions[wallIndex] > 3 && !isPacman(newCellId) && !isDot(newCellId)) {
-                        direction = "up";
-                        moveWall('cell-' + (newCellId),movement,direction);   
-                        undoTimes=0;                  
+                        if (score <= 0){
+                            direction = "up";
+                            moveWall('cell-' + (newCellId),movement,direction);
+                        }                   
                     }
                 }
             } else if (key === 'ArrowDown' || keyCode === 83) {
@@ -256,17 +287,19 @@
                     // Move Pacman sprite to the cell below
                     newCellId = pacmanPositions[pacmanIndex] + 3;
                     if (pacmanPositions[ pacmanIndex] < 7 && !isWall(newCellId)) {
-                        direction = "down";
-                        movePacman('cell-' + (newCellId),movement,direction);   
-                        undoTimes=0;                  
+                        if (score <= 0){
+                            direction = "down";
+                            movePacman('cell-' + (newCellId),movement,direction);
+                        }                     
                     }
                 } else {
                     newCellId = wallPositions[wallIndex] + 3;
                     // console.log(isDot(newCellId));
                     if (wallPositions[wallIndex] < 7 && !isPacman(newCellId) && !isDot(newCellId)) {
-                        direction = "down";
-                        moveWall('cell-' + (newCellId),movement,direction); 
-                        undoTimes=0;                        
+                        if (score <= 0){
+                            direction = "down";
+                            moveWall('cell-' + (newCellId),movement,direction);
+                        }                        
                     }
                 }
             } else if (key === 'ArrowLeft' || keyCode === 65) {
@@ -274,17 +307,19 @@
                     // Move Pacman sprite to the cell to the left
                     newCellId = pacmanPositions[pacmanIndex] - 1
                     if (pacmanPositions[ pacmanIndex] % 3 !== 1 && !isWall(newCellId)) {
-                        direction = "left";
-                        movePacman('cell-' + (newCellId),movement,direction);  
-                        undoTimes=0;                      
+                        if (score <= 0){
+                            direction = "left";
+                            movePacman('cell-' + (newCellId),movement,direction);
+                        }                       
                     }
                 } else {
                     newCellId = wallPositions[wallIndex] - 1
                     // console.log(isDot(newCellId));
                     if (wallPositions[wallIndex] % 3 !== 1 && !isPacman(newCellId) && !isDot(newCellId)) {
-                        direction = "left";
-                        moveWall('cell-' + (newCellId),movement,direction); 
-                        undoTimes=0;                      
+                        if (score <= 0){
+                            direction = "left";
+                            moveWall('cell-' + (newCellId),movement,direction);
+                        }                   
                     }
                 }
             } else if (key === 'ArrowRight' || keyCode === 68) {
@@ -292,17 +327,19 @@
                     // Move Pacman sprite to the cell to the right
                     newCellId = pacmanPositions[pacmanIndex] + 1;
                     if (pacmanPositions[ pacmanIndex] % 3 !== 0 && !isWall(newCellId)) {
-                        direction = "right";
-                        movePacman('cell-' + (newCellId),movement,direction);
-                        undoTimes=0;
+                        if (score <= 0){
+                            direction = "right";
+                            movePacman('cell-' + (newCellId),movement,direction);
+                        }
                     }
                 } else {
                     newCellId = wallPositions[wallIndex] + 1;
                     // console.log(isDot(newCellId));
                     if (wallPositions[wallIndex] % 3 !== 0 && !isPacman(newCellId) && !isDot(newCellId)) {
-                        direction = "right";
-                        moveWall('cell-' + (newCellId),movement,direction); 
-                        undoTimes=0;
+                        if (score <= 0){
+                            direction = "right";
+                            moveWall('cell-' + (newCellId),movement,direction); 
+                        }
                     }
                 }
             }
@@ -311,9 +348,6 @@
         // Event listener for the Undo button
         document.getElementById('undoButton').addEventListener('click', () => {
             let direction;
-            if (depth != 0){
-                undoTimes++;
-            }
             if (depth % 2 == 1){
                 if ( pacmanIndex > 0) {
                     movePacman('cell-' + (pacmanPositions[pacmanIndex-1]),undo,direction);
@@ -481,7 +515,7 @@
             const nodes = unique.filter(node => node.depth === level);
             nodesByLevel[level] = nodes;
             const numNodes = nodes.length;
-            const nodeWidth = 60; // Width of each node
+            let nodeWidth = 60; // Width of each node
             const spacing = 20; // Spacing between nodes
 
             // Calculate total width occupied by nodes at this level
@@ -532,28 +566,60 @@
 
             // Iterate over nodes and visualize them
             nodes.forEach((node, index) => {
+                // Check if node is terminal
+                let isTerminal = isNodeTerminal(node, level)
+                
                 // Calculate x-coordinate for current node
                 const x = startX + index * (nodeWidth + spacing);
 
                 // Calculate y-coordinate based on level
-                const y = 100 * level; // Adjust this value as needed
+                const y = 100 * level + 20; // Adjust this value as needed
 
-                // Create a polygon element for the node
-                const triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                const trianglePoints = `${x},${y + addend1} ${x + nodeWidth},${y + addend1} ${x + nodeWidth / 2},${y + addend2}`;
-                const centerX = (x + (x + nodeWidth) + (x + nodeWidth / 2)) / 3;
-                const centerY = (y + addend1 + y + addend1 + y + addend2) / 3;
-                node.centerX = centerX;
-                node.centerY = centerY;
-                triangle.setAttribute('points', trianglePoints);
-                triangle.setAttribute('fill', color);
-                triangle.setAttribute('stroke', 'white');
-                triangle.setAttribute('stroke-width', '2');
-                if (lastStep.id == node.id) {
-                    triangle.setAttribute('stroke', 'yellow');
-                    triangle.setAttribute('stroke-width', '7');
+                let centerX;
+                let centerY;
+                if (!isTerminal){
+                    // Create a triangle for the node
+                    const triangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                    const trianglePoints = `${x},${y + addend1} ${x + nodeWidth},${y + addend1} ${x + nodeWidth / 2},${y + addend2}`;
+                    centerX = (x + (x + nodeWidth) + (x + nodeWidth / 2)) / 3;
+                    centerY = (y + addend1 + y + addend1 + y + addend2) / 3;
+                    node.centerX = centerX;
+                    node.centerY = centerY;
+                    triangle.setAttribute('points', trianglePoints);
+                    triangle.setAttribute('fill', color);
+                    triangle.setAttribute('stroke', 'white');
+                    triangle.setAttribute('stroke-width', '2');
+                    // yellow outline to know where we are in the tree
+                    if (lastStep.id == node.id) {
+                        triangle.setAttribute('stroke', 'yellow');
+                        triangle.setAttribute('stroke-width', '7');
+                    }
+                    triangleElements.push(triangle);
+                } else {
+                    // Create a rectangle for the terminal node
+                    const fixWidth = 5
+                    const rectangle = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                    const rectanglePoints = `${x - fixWidth},${y + addend1} ${x + nodeWidth + fixWidth},${y + addend1} ${x + nodeWidth + fixWidth},${y + addend2} ${x - fixWidth},${y + addend2}`;
+                    centerX = (x + (x + nodeWidth) + (x + nodeWidth / 2)) / 3;
+                    centerY = (y + addend1 + y + addend1 + y + addend2) / 3;
+                    node.centerX = centerX;
+                    node.centerY = centerY;
+                    rectangle.setAttribute('points', rectanglePoints);
+                    rectangle.setAttribute('fill', 'white');
+                    rectangle.setAttribute('stroke', 'white');
+                    rectangle.setAttribute('stroke-width', '2');
+                    // yellow outline to know where we are in the tree, and red if game has ended
+                    if (lastStep.id == node.id) {
+                        if (node.score <= 0){
+                            rectangle.setAttribute('stroke', 'yellow');
+                            rectangle.setAttribute('stroke-width', '7');
+                        } else {
+                            rectangle.setAttribute('stroke', 'red');
+                            rectangle.setAttribute('stroke-width', '10');
+                        }
+                    }
+                    triangleElements.push(rectangle);
                 }
-                triangleElements.push(triangle);
 
                 // console.log(node);
 
@@ -562,7 +628,8 @@
                     let parentNode;
                     const x1 = node.centerX;
                     const y1 = node.centerY;
-
+                    
+                    // find parent of a specific node
                     if (nodesByLevel[level - 1]) {
                         parentNode = nodesByLevel[level - 1].find(parent => parent.id === node.parent.id);
                     }
@@ -583,6 +650,7 @@
                     svgContainer.appendChild(line);
                 }
 
+
                 
 
                 // Add text "U" inside the node
@@ -599,6 +667,23 @@
                 text.setAttribute('text-anchor', 'middle'); // Center the text horizontally
                 text.setAttribute('style', 'text-align: center;');
                 textElements.push(text);
+
+                // make score show
+                if (isTerminal){
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', centerX);
+                    text.setAttribute('y', level % 2 == 0 ? centerY - 20 : centerY + 25);
+                    text.setAttribute('text-anchor', 'middle'); // Center the text horizontally
+                    text.setAttribute('dominant-baseline', 'middle'); // Center the text vertically
+                    text.textContent = node.score; // Add the text "U"
+                    text.setAttribute('font-size', '25px'); // Adjust font size as needed
+                    text.setAttribute('strokewidth', '1px');
+                    text.setAttribute('stroke', 'black');
+                    text.setAttribute('fill', 'black');
+                    text.setAttribute('text-anchor', 'middle'); // Center the text horizontally
+                    text.setAttribute('style', 'text-align: center;');
+                    textElements.push(text);
+                }
                 
                 if (node.direction != undefined){
                     const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -614,10 +699,7 @@
                 
             });
 
-            
-
-
-            
+                        
 
             
         }
@@ -679,6 +761,24 @@
         }
 
 
+        function isNodeTerminal(node, level){
+            // find child of node
+            let childNode;
+            const nodesInLowerLevel = unique.filter(node => node.depth === level + 1);
+            if (nodesInLowerLevel) {
+                childNode = nodesInLowerLevel.find(child => {
+                    // Remove the last character from child.id
+                    let modifiedChildId = child.id.slice(0, -1);
+                    // Compare modifiedChildId with node.id
+                    return modifiedChildId === node.id;
+                });
+            }
+            if (!childNode && level != 0){
+                return true;
+            } else {
+                return false;
+            }
+        }
 
 
 
@@ -686,18 +786,6 @@
 
 
 
-
-
-
-
-
-
-        
-       
-
-
-
-        
         
     </script>
 </body>
